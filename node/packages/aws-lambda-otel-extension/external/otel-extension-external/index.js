@@ -272,15 +272,49 @@ module.exports = (async () => {
                   }
                   const currentRequestData = getCurrentRequestData('request');
                   currentRequestData.eventData = data.record;
-                  if (currentRequestData.logsQueue.length) {
-                    sendReport('logs', createLogPayload(data.record, currentRequestData.logsQueue));
-                  }
+                  sendReport(
+                    'logs',
+                    createLogPayload(data.record, [
+                      {
+                        time: currentRequestData.logsQueue[0]
+                          ? currentRequestData.logsQueue[0].time
+                          : new Date().getTime() - 100,
+                        record: 'invoked',
+                        metadata: {
+                          context: true,
+                          contextType: 'req',
+                          rawEventData: JSON.stringify(data.record.requestEventPayload),
+                        },
+                      },
+                      ...currentRequestData.logsQueue,
+                    ])
+                  );
                 }
                 break;
               case 'telemetryData':
                 lastTelemetryData = data;
                 if (data.record.responseEventPayload) {
                   sendReport('response', stripResponseBlobData(data.record.responseEventPayload));
+                  const currentRequestData = getCurrentRequestData();
+                  debugLog(
+                    'Response Payload',
+                    JSON.stringify(data.record.responseEventPayload),
+                    JSON.stringify(currentRequestData)
+                  );
+                  sendReport(
+                    'logs',
+                    createLogPayload(currentRequestData.eventData, [
+                      {
+                        time: new Date().getTime(),
+                        record: 'complete',
+                        metadata: {
+                          context: true,
+                          contextType: 'res',
+                          rawEventData: JSON.stringify(data.record.responseEventPayload),
+                        },
+                      },
+                    ])
+                  );
                 }
                 sendReport('metrics', createMetricsPayload(data.requestId, data.record.function));
                 for (const tracePayload of createTracePayload(
