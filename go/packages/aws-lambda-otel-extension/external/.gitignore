@@ -1,0 +1,4 @@
+dist/
+.vscode
+sls-hello-world/
+deploy
